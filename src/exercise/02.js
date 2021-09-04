@@ -180,4 +180,19 @@ He includes some more error-handling etc.
 > typeof(JSON.parse('\"what\"'))
   "string"
 
+useEffect(() => {})      // we depend on EVERYTHING
+useEffect(() => {}, [])  // we depend on NOTHING (run first time only)
+useEffect(() => {}, [x]) // we depend on x
+
+For updates, if the effect will need to be run again, any cleanup work is done first
+For unmounts, all cleanup effects are run
+
+{showChild ? <Child /> : null}
+<Child/> is the same as React.createElement(Child)
+So it hasn't called function, it just knows it.
+React will call function (render component) when time is right.
+
+Components can be in different parts of the lifecycle at same time
+i.e. parent in UPDATE and child in MOUNT
+
 */
