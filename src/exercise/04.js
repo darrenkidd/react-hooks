@@ -2,40 +2,48 @@
 // http://localhost:3000/isolated/exercise/04.js
 
 import * as React from 'react'
+import {useLocalStorageState} from '../utils'
 
+// He demo'd doing initial array this way... I guess it works fine
+// because the original Array is always copied and mutated when
+// user selects a square. So the empty board can stay around. (Can I do a freeze() on arrays?)
+// eslint-disable-next-line no-unused-vars
+const initialSquares = Array(9).fill(null)
+
+// eslint-disable-next-line no-unused-vars
 function Board() {
-  // 🐨 squares is the state for this component. Add useState for squares
-  const squares = Array(9).fill(null)
+  const [squares, setSquares] = React.useState(() => {
+    const savedBoard = window.localStorage.getItem('squares')
+    return savedBoard ? JSON.parse(savedBoard) : blankBoard()
+    /* His quick version was just this:
+      () => JSON.parse(window.localStorage.getItem('squares')) || Array(9).fill(null) */
+  })
 
-  // 🐨 We'll need the following bits of derived state:
-  // - nextValue ('X' or 'O')
-  // - winner ('X', 'O', or null)
-  // - status (`Winner: ${winner}`, `Scratch: Cat's game`, or `Next player: ${nextValue}`)
-  // 💰 I've written the calculations for you! So you can use my utilities
-  // below to create these variables
+  const nextValue = calculateNextValue(squares)
+  const winner = calculateWinner(squares)
+  const status = calculateStatus(winner, squares, nextValue)
 
-  // This is the function your square click handler will call. `square` should
-  // be an index. So if they click the center square, this will be `4`.
+  function saveBoard(squares) {
+    window.localStorage.setItem('squares', JSON.stringify(squares))
+    setSquares(squares)
+  }
+
+  // square is the index
+  //  [0, 1, 2
+  //   3, 4, 5,
+  //   6, 7, 8]
   function selectSquare(square) {
-    // 🐨 first, if there's already winner or there's already a value at the
-    // given square index (like someone clicked a square that's already been
-    // clicked), then return early so we don't make any state changes
-    //
-    // 🦉 It's typically a bad idea to mutate or directly change state in React.
-    // Doing so can lead to subtle bugs that can easily slip into production.
-    //
-    // 🐨 make a copy of the squares array
-    // 💰 `[...squares]` will do it!)
-    //
-    // 🐨 set the value of the square that was selected
-    // 💰 `squaresCopy[square] = nextValue`
-    //
-    // 🐨 set the squares to your copy
+    if (squares[square]) return // this square has already been selected - disallow move
+    if (winner) return // game has already been won - disallow move
+
+    const squaresCopy = [...squares] // should never mutate managed state (for objects/arrays etc.)
+    squaresCopy[square] = nextValue
+
+    saveBoard(squaresCopy)
   }
 
   function restart() {
-    // 🐨 reset the squares
-    // 💰 `Array(9).fill(null)` will do it!
+    setSquares(blankBoard())
   }
 
   function renderSquare(i) {
@@ -48,8 +56,62 @@ function Board() {
 
   return (
     <div>
-      {/* 🐨 put the status in the div below */}
-      <div className="status">STATUS</div>
+      <div className="status">{status}</div>
+      <div className="board-row">
+        {renderSquare(0)}
+        {renderSquare(1)}
+        {renderSquare(2)}
+      </div>
+      <div className="board-row">
+        {renderSquare(3)}
+        {renderSquare(4)}
+        {renderSquare(5)}
+      </div>
+      <div className="board-row">
+        {renderSquare(6)}
+        {renderSquare(7)}
+        {renderSquare(8)}
+      </div>
+      <button className="restart" onClick={restart}>
+        restart
+      </button>
+    </div>
+  )
+}
+
+function BoardEc2() {
+  const [squares, setSquares] = useLocalStorageState('squares', () =>
+    Array(9).fill(null), // He doesn't return the anon function, he just sets it directly to filled array. I guess it's not a very intensive operation.
+  )
+
+  const nextValue = calculateNextValue(squares)
+  const winner = calculateWinner(squares)
+  const status = calculateStatus(winner, squares, nextValue)
+
+  function selectSquare(square) {
+    if (winner || squares[square]) {
+      return
+    }
+    const squaresCopy = [...squares]
+    squaresCopy[square] = nextValue
+    setSquares(squaresCopy)
+  }
+
+  function restart() {
+    setSquares(Array(9).fill(null))
+  }
+
+  function renderSquare(i) {
+    return (
+      <button className="square" onClick={() => selectSquare(i)}>
+        {squares[i]}
+      </button>
+    )
+  }
+
+  return (
+    <div>
+      <div className="status">{status}</div>
       <div className="board-row">
         {renderSquare(0)}
         {renderSquare(1)}
@@ -76,14 +138,126 @@ function Game() {
   return (
     <div className="game">
       <div className="game-board">
-        <Board />
+        <BoardEc2 />
       </div>
     </div>
   )
 }
 
-// eslint-disable-next-line no-unused-vars
-function calculateStatus(winner, squares, nextValue) {
+function BoardEc3({onClick, squares}) {
+  function renderSquare(i) {
+    return (
+      <button className="square" onClick={() => onClick(i)}>
+        {squares[i]}
+      </button>
+    )
+  }
+
+  return (
+    <div>
+      <div className="board-row">
+        {renderSquare(0)}
+        {renderSquare(1)}
+        {renderSquare(2)}
+      </div>
+      <div className="board-row">
+        {renderSquare(3)}
+        {renderSquare(4)}
+        {renderSquare(5)}
+      </div>
+      <div className="board-row">
+        {renderSquare(6)}
+        {renderSquare(7)}
+        {renderSquare(8)}
+      </div>
+    </div>
+  )
+}
+
+function GameEc3() {
+  // he named this "history" instead of "moves"
+  const [moves, setMoves] = useLocalStorageState('tic-tac-toe:history', [
+    Array(9).fill(null),
+  ])
+  const [step, setStep] = useLocalStorageState('tic-tac-toe:step', 0)
+
+  const currentSquares = moves[step] // this is the critical line!
+
+  const nextValue = calculateNextValue(currentSquares) // X or O
+  const winner = calculateWinner(currentSquares) // X or O or null
+  const status = calculateStatus(winner, currentSquares, nextValue) // status string
+
+  function restart() {
+    setMoves([Array(9).fill(null)])
+    setStep(0)
+  }
+
+  function onSelectSquare(square) {
+    if (winner || currentSquares[square]) {
+      return
+    }
+    const currentSquaresCopy = [...currentSquares]
+    currentSquaresCopy[square] = nextValue
+    setCurrentSquares(currentSquaresCopy, moves, step)
+  }
+
+  function setCurrentSquares(squares, moves, step) {
+    const nextStep = step + 1
+    const movesCopy = moves.slice(0, nextStep); // new array with shallow copy (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/slice)
+    // const movesCopy = Array(nextStep).fill(null)
+    // for (let i = 0; i < nextStep; i++) {
+    //   movesCopy[i] = [...moves[i]]
+    // }
+    // movesCopy[nextStep] = squares
+    // setMoves(movesCopy)
+    // setStep(step => nextStep)
+    
+    // because we're in an event-handler (onSelectSquare)
+    // these state updates are batched together after we finish
+    setMoves([...movesCopy, squares])
+    setStep(movesCopy.length)
+  }
+
+  function GameButton({moveNum, onClick}) {
+    // I had to change this all around because the tests were failing. :'(
+
+    // const props = moveNum === step ? {disabled: true} : {}
+    const isCurrent = moveNum === step;
+    return (
+      // <button {...props} onClick={onClick}>
+      <button disabled={isCurrent} onClick={onClick}>
+        Go to {moveNum === 0 ? `game start` : `move #${moveNum}`}
+        {moveNum === step && ` (current)`}
+      </button>
+    )
+  }
+  
+  // Note you can do do conditions and render nothing in JSX like this:
+  // {blahIsTrue ? "blah" : null}
+
+  return (
+    <div className="game">
+      <div className="game-board">
+        <BoardEc3 onClick={onSelectSquare} squares={currentSquares} />
+        <button className="restart" onClick={restart}>
+          restart
+        </button>
+      </div>
+      <div className="game-info">
+        <div>{status}</div>
+        <ol>
+          {moves.map((_, i) => (
+            <li key={i}>
+              <GameButton moveNum={i} onClick={() => setStep(i)} />
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  )
+}
+
+export function calculateStatus(winner, squares, nextValue) {
   return winner
     ? `Winner: ${winner}`
     : squares.every(Boolean)
@@ -91,13 +265,11 @@ function calculateStatus(winner, squares, nextValue) {
     : `Next player: ${nextValue}`
 }
 
-// eslint-disable-next-line no-unused-vars
-function calculateNextValue(squares) {
+export function calculateNextValue(squares) {
   return squares.filter(Boolean).length % 2 === 0 ? 'X' : 'O'
 }
 
-// eslint-disable-next-line no-unused-vars
-function calculateWinner(squares) {
+export function calculateWinner(squares) {
   const lines = [
     [0, 1, 2],
     [3, 4, 5],
@@ -117,8 +289,12 @@ function calculateWinner(squares) {
   return null
 }
 
-function App() {
-  return <Game />
+export const blankBoard = () => Array(9).fill(null)
+
+export default function App() {
+  return <GameEc3 />
 }
 
-export default App
+export function AppEc1() {
+  return <Game />
+}

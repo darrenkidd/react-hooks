@@ -2,11 +2,11 @@ import * as React from 'react'
 import {alfredTip} from '@kentcdodds/react-workshop-app/test-utils'
 import {render, screen} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import App from '../final/04.extra-1'
-// import App from '../exercise/04'
+// import App from '../final/04.extra-1'
+import { AppEc1 } from '../exercise/04'
 
 test('can play a game of tic tac toe', () => {
-  const {container} = render(<App />)
+  const {container} = render(<AppEc1 />)
   // prettier-ignore
   const [
     s1, s2, s3,
